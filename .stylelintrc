@@ -1,0 +1,15 @@
+{
+  "extends": [
+    "stylelint-config-standard",
+    "stylelint-prettier/recommended",
+    "stylelint-config-sass-guidelines",
+    "stylelint-config-prettier-scss"
+  ],
+  "customSyntax": "postcss-styled-syntax",
+  "overrides": [
+    {
+      "files": ["**/*.scss"],
+      "customSyntax": "postcss-styled-syntax"
+    }
+  ]
+}
