@@ -36,4 +36,5 @@ export default defineConfig({
       '/api': 'https://localhost:8080',
     },
   },
+  assetsInclude: ['**/*.bpmn'],
 })
