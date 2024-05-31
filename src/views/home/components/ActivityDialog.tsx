@@ -1,3 +1,4 @@
+/* eslint-disable import/named */
 import { ColumnDef } from '@tanstack/react-table'
 import { FaTable } from 'react-icons/fa'
 import { LuArrowUpDown } from 'react-icons/lu'
