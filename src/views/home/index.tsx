@@ -7,7 +7,6 @@ import BpmnModeler from 'bpmn-js/lib/Modeler'
 import Papa from 'papaparse'
 import { useEffect, useRef, useState } from 'react'
 import { FaPause, FaPlay, FaStop } from 'react-icons/fa'
-import { FaTable } from 'react-icons/fa6'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,21 +18,44 @@ import calcColorLevels from '@/shared/utils/calcColorLevels'
 import colorModel from '@/shared/utils/colorModel'
 import createBpmnXml from '@/shared/utils/createBmpnXml'
 import generateBPMN from '@/shared/utils/generateBMPN'
+import simulate from '@/shared/utils/simulate'
 import { CsvRow } from '@/types/common'
 
+import ActivityDialog from './components/ActivityDialog'
+import { CountRow } from './components/ActivityTable'
 import MenuSheet from './components/MenuSheet'
 
 const Home = () => {
   const [bpmnModeler, setBpmnModeler] = useState<BpmnModeler | null>(null)
   const activityCounts = useRef<Record<string, number>>({})
-  const [activityList, setActivityList] = useState<Record<string, number>>({})
+  const activityCountsList = useRef<CountRow[]>([])
   const taskWidth = useRef<number>(100)
   const [isSuccess, setSuccess] = useState<boolean>(false)
+  const [isSimulating, setIsSimulating] = useState<boolean>(false)
+  const [currentEntryIdx, setCurrentEntryIdx] = useState<number>(0)
+  const currentIdxRef = useRef<number>(0)
+  const [lastIdx, setLastIdx] = useState<number>(1)
 
   useEffect(() => {
     const modeler = new BpmnModeler({ container: '#bpmnview' })
     setBpmnModeler(modeler)
   }, [])
+
+  useEffect(() => {
+    let intervalId = setInterval(() => {}, 1000)
+    if (isSimulating && isSuccess) {
+      intervalId = setInterval(
+        () => {
+          simulate(currentIdxRef.current)
+          setCurrentEntryIdx(currentIdxRef.current)
+          currentIdxRef.current++
+        },
+        parseInt(localStorage.getItem('tickTime') ?? '10') ?? 10,
+      )
+    }
+
+    return () => clearInterval(intervalId)
+  }, [isSuccess, isSimulating])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -49,9 +71,14 @@ const Home = () => {
           } = generateBPMN(results.data)
           taskWidth.current = newTaskWidth
           activityCounts.current = counts
-          setActivityList(counts)
+          const countList = []
+          for (const countKey of Object.keys(counts)) {
+            countList.push({ name: countKey, count: counts[countKey] })
+          }
+          activityCountsList.current = countList
           const bpmnXml = createBpmnXml(bpmnElements, taskMap, 'Process_1', taskWidth.current)
           renderBpmn(bpmnXml, taskMap)
+          setLastIdx(results.data.length)
         },
       })
     }
@@ -66,12 +93,28 @@ const Home = () => {
           console.warn('BPMN diagram loaded successfully!', warnings)
           colorModel(taskMap, calcColorLevels(activityCounts.current))
           setSuccess(true)
+          const zoom = bpmnModeler?.get('zoomScroll') as any
+          zoom.reset()
         })
         .catch((err) => {
           const { warnings, message } = err
           console.warn('Something went wrong:', warnings, message)
         })
     }
+  }
+
+  const handlePlaySimulation = () => {
+    setIsSimulating(true)
+  }
+
+  const handlePauseSimulation = () => {
+    setIsSimulating(false)
+  }
+
+  const handleStopSimulation = () => {
+    setIsSimulating(false)
+    currentIdxRef.current = 0
+    setCurrentEntryIdx(0)
   }
 
   return (
@@ -98,21 +141,24 @@ const Home = () => {
             <Button
               variant='secondary'
               className='flex basis-1/6'
-              disabled={!isSuccess}
+              disabled={!isSuccess || isSimulating}
+              onClick={handlePlaySimulation}
             >
               <FaPlay className='mr-2' /> Start simulation
             </Button>
             <Button
               variant='secondary'
               className='flex basis-1/6'
-              disabled={!isSuccess}
+              disabled={!isSuccess || !isSimulating}
+              onClick={handlePauseSimulation}
             >
               <FaPause className='mr-2' /> Pause simulation
             </Button>
             <Button
               variant='secondary'
               className='flex basis-1/6'
-              disabled={!isSuccess}
+              disabled={!isSuccess || !isSimulating}
+              onClick={handleStopSimulation}
             >
               <FaStop className='mr-2' /> Stop simulation
             </Button>
@@ -121,9 +167,11 @@ const Home = () => {
         <span className='flex gap-x-5 items-end h-full'>
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger className='flex justify-center'>
-                <FaTable className='text-secondary w-8 h-8' />
-              </TooltipTrigger>
+              {isSuccess && (
+                <TooltipTrigger className='flex justify-center'>
+                  <ActivityDialog data={activityCountsList.current} />
+                </TooltipTrigger>
+              )}
               <TooltipContent>
                 <p>View task count</p>
               </TooltipContent>
@@ -141,16 +189,21 @@ const Home = () => {
         </span>
       </div>
       <Separator />
-      <Progress value={33} />
+      <span className='flex justify-center items-center gap-x-5'>
+        <Progress value={Number(((currentIdxRef.current / lastIdx) * 100).toPrecision(4))} />
+        <span className='flex items-center gap-x-5 w-1/6'>
+          <h3 className='text-xl text-secondary w-1/2 text-start'>
+            {Number(((currentIdxRef.current / lastIdx) * 100).toPrecision(4))}%
+          </h3>
+          <h3 className='text-xl text-secondary w-1/2 text-end'>
+            {currentEntryIdx}/{lastIdx}
+          </h3>
+        </span>
+      </span>
       <div
         id='bpmnview'
         className='w-full h-full border-2 bg-zinc-900'
       />
-      <ul>
-        {Object.entries(activityList).map(([activityName, count]) => (
-          <li key={activityName}>{`${activityName}: ${count}`}</li>
-        ))}
-      </ul>
     </div>
   )
 }
