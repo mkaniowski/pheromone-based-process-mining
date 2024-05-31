@@ -34,7 +34,8 @@
     "src/**/*.jsx",
     "src/**/*.js",
     "**/*.gen.ts",
-    "vite.config.mts"
+    "vite.config.mts",
+    "tailwind.config.js"
   ],
   "exclude": ["node_modules", "src/**/*.spec.ts", "src/**/*.spec.tsx"],
   "references": [{ "path": "./tsconfig.node.json" }]
