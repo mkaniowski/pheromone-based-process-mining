@@ -10,7 +10,7 @@ const colorElement = (id: string, colorLevel: ColorLevel) => {
 
     for (const rect of rectElements) {
       const styles = (rect as SVGElement).getAttribute('style')
-      ;(rect as any).style = `${styles} stroke: ${colorSwitch(colorLevel)};`
+      ;(rect as any).style = `${styles} stroke: ${colorSwitch(colorLevel)}; stroke-width: 8px;`
     }
   }
 }
