@@ -14,10 +14,11 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import calcColorLevels from '@/shared/utils/calcColorLevels'
-import colorModel from '@/shared/utils/colorModel'
 import createBpmnXml from '@/shared/utils/createBmpnXml'
+import createEndMarkes from '@/shared/utils/createEndMarkers'
 import generateBPMN from '@/shared/utils/generateBMPN'
+import generateTimeline from '@/shared/utils/generateTimeline'
+import parseLogs from '@/shared/utils/parseLogs'
 import simulate from '@/shared/utils/simulate'
 import { CsvRow } from '@/types/common'
 
@@ -35,6 +36,7 @@ const Home = () => {
   const [currentEntryIdx, setCurrentEntryIdx] = useState<number>(0)
   const currentIdxRef = useRef<number>(0)
   const [lastIdx, setLastIdx] = useState<number>(1)
+  const [timeline, setTimeline] = useState<string[]>([])
 
   useEffect(() => {
     const modeler = new BpmnModeler({ container: '#bpmnview' })
@@ -46,7 +48,7 @@ const Home = () => {
     if (isSimulating && isSuccess) {
       intervalId = setInterval(
         () => {
-          simulate(currentIdxRef.current)
+          simulate(timeline, currentIdxRef.current)
           setCurrentEntryIdx(currentIdxRef.current)
           currentIdxRef.current++
         },
@@ -55,7 +57,7 @@ const Home = () => {
     }
 
     return () => clearInterval(intervalId)
-  }, [isSuccess, isSimulating])
+  }, [isSuccess, isSimulating, timeline])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -77,24 +79,34 @@ const Home = () => {
           }
           activityCountsList.current = countList
           const bpmnXml = createBpmnXml(bpmnElements, taskMap, 'Process_1', taskWidth.current)
-          renderBpmn(bpmnXml, taskMap)
+          renderBpmn(bpmnXml)
           setLastIdx(results.data.length)
+          const caseList = parseLogs(results.data, taskMap)
+          const _timeline = generateTimeline(results.data, caseList, taskMap)
+          setTimeline(_timeline)
+          setLastIdx(_timeline.length - 1)
+          localStorage.setItem('trace0', '')
+          localStorage.setItem('trace1', '')
+          localStorage.setItem('trace2', '')
+          localStorage.setItem('trace3', '')
+          localStorage.setItem('trace4', '')
         },
       })
     }
   }
 
-  const renderBpmn = async (xml: string, taskMap: Record<string, string>) => {
+  const renderBpmn = async (xml: string) => {
     if (bpmnModeler) {
       bpmnModeler
         .importXML(xml)
         .then((result) => {
           const { warnings } = result
           console.warn('BPMN diagram loaded successfully!', warnings)
-          colorModel(taskMap, calcColorLevels(activityCounts.current))
+          // colorModel(taskMap, calcColorLevels(activityCounts.current))
           setSuccess(true)
           const zoom = bpmnModeler?.get('zoomScroll') as any
           zoom.reset()
+          createEndMarkes()
         })
         .catch((err) => {
           const { warnings, message } = err

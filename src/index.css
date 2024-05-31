@@ -58,7 +58,7 @@
   }
 }
 
-.djs-element.djs-connection {
+/* .djs-element.djs-connection {
   & path {
     stroke: rgb(155, 155, 155) !important;
   }
@@ -69,7 +69,7 @@ marker {
     stroke: rgb(155, 155, 155) !important;
     fill: rgb(155, 155, 155) !important;
   }
-}
+} */
 
 .djs-palette {
   visibility: hidden;
