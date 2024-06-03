@@ -2,9 +2,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRouter, RouterProvider } from '@tanstack/react-router'
 import ReactDOM from 'react-dom/client'
+import { Provider } from 'react-redux'
 
 import Translations from './i18n/Translations'
 import { routeTree } from './routeTree.gen'
+import { store } from './store'
 import ErrorPage from './views/ErrorPage'
 
 // Set up a Router instance
@@ -24,13 +26,15 @@ const rootElement = document.getElementById('root')!
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
-    <Translations>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider
-          router={router}
-          notFoundMode='fuzzy'
-        />
-      </QueryClientProvider>
-    </Translations>,
+    <Provider store={store}>
+      <Translations>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider
+            router={router}
+            notFoundMode='fuzzy'
+          />
+        </QueryClientProvider>
+      </Translations>
+    </Provider>,
   )
 }

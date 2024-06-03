@@ -7,6 +7,7 @@ import BpmnModeler from 'bpmn-js/lib/Modeler'
 import Papa from 'papaparse'
 import { useEffect, useRef, useState } from 'react'
 import { FaPause, FaPlay, FaStop } from 'react-icons/fa'
+import { useDispatch, useSelector } from 'react-redux'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,12 +15,18 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  color,
+  decrement,
+  getPheromones,
+  increment,
+  removeColor,
+} from '@/shared/slice/pheromoneSlice'
 import createBpmnXml from '@/shared/utils/createBmpnXml'
 import createEndMarkes from '@/shared/utils/createEndMarkers'
 import generateBPMN from '@/shared/utils/generateBMPN'
 import generateTimeline from '@/shared/utils/generateTimeline'
 import parseLogs from '@/shared/utils/parseLogs'
-import simulate from '@/shared/utils/simulate'
 import { CsvRow } from '@/types/common'
 
 import ActivityDialog from './components/ActivityDialog'
@@ -28,7 +35,7 @@ import MenuSheet from './components/MenuSheet'
 
 const Home = () => {
   const [bpmnModeler, setBpmnModeler] = useState<BpmnModeler | null>(null)
-  const activityCounts = useRef<Record<string, number>>({})
+  const [taskMap, setTaskMap] = useState<Record<string, string>>({})
   const activityCountsList = useRef<CountRow[]>([])
   const taskWidth = useRef<number>(100)
   const [isSuccess, setSuccess] = useState<boolean>(false)
@@ -37,6 +44,9 @@ const Home = () => {
   const currentIdxRef = useRef<number>(0)
   const [lastIdx, setLastIdx] = useState<number>(1)
   const [timeline, setTimeline] = useState<string[]>([])
+
+  const dispatch = useDispatch()
+  const pheromones = useSelector(getPheromones)
 
   useEffect(() => {
     const modeler = new BpmnModeler({ container: '#bpmnview' })
@@ -48,7 +58,10 @@ const Home = () => {
     if (isSimulating && isSuccess) {
       intervalId = setInterval(
         () => {
-          simulate(timeline, currentIdxRef.current)
+          dispatch(increment(timeline[currentIdxRef.current]))
+          dispatch(color())
+          dispatch(decrement())
+
           setCurrentEntryIdx(currentIdxRef.current)
           currentIdxRef.current++
         },
@@ -57,7 +70,18 @@ const Home = () => {
     }
 
     return () => clearInterval(intervalId)
-  }, [isSuccess, isSimulating, timeline])
+  }, [isSuccess, isSimulating, timeline, dispatch])
+
+  useEffect(() => {
+    if (!taskMap) return
+    const countList = []
+    for (const countKey of Object.keys(pheromones)) {
+      if (countKey.includes('Flow')) continue
+      const taskName = Object.keys(taskMap).find((key) => taskMap[key] === countKey) ?? ''
+      countList.push({ name: taskName, count: pheromones[countKey] })
+    }
+    activityCountsList.current = countList
+  }, [pheromones, taskMap])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -67,29 +91,18 @@ const Home = () => {
         complete: (results) => {
           const {
             bpmnElements,
-            taskMap,
+            taskMap: _taskMap,
             taskWidth: newTaskWidth,
-            counts,
           } = generateBPMN(results.data)
+          setTaskMap(_taskMap)
           taskWidth.current = newTaskWidth
-          activityCounts.current = counts
-          const countList = []
-          for (const countKey of Object.keys(counts)) {
-            countList.push({ name: countKey, count: counts[countKey] })
-          }
-          activityCountsList.current = countList
-          const bpmnXml = createBpmnXml(bpmnElements, taskMap, 'Process_1', taskWidth.current)
+          const bpmnXml = createBpmnXml(bpmnElements, _taskMap, 'Process_1', taskWidth.current)
           renderBpmn(bpmnXml)
           setLastIdx(results.data.length)
-          const caseList = parseLogs(results.data, taskMap)
-          const _timeline = generateTimeline(results.data, caseList, taskMap)
+          const caseList = parseLogs(results.data, _taskMap)
+          const _timeline = generateTimeline(results.data, caseList, _taskMap)
           setTimeline(_timeline)
           setLastIdx(_timeline.length - 1)
-          localStorage.setItem('trace0', '')
-          localStorage.setItem('trace1', '')
-          localStorage.setItem('trace2', '')
-          localStorage.setItem('trace3', '')
-          localStorage.setItem('trace4', '')
         },
       })
     }
@@ -102,7 +115,6 @@ const Home = () => {
         .then((result) => {
           const { warnings } = result
           console.warn('BPMN diagram loaded successfully!', warnings)
-          // colorModel(taskMap, calcColorLevels(activityCounts.current))
           setSuccess(true)
           const zoom = bpmnModeler?.get('zoomScroll') as any
           zoom.reset()
@@ -125,6 +137,7 @@ const Home = () => {
 
   const handleStopSimulation = () => {
     setIsSimulating(false)
+    dispatch(removeColor())
     currentIdxRef.current = 0
     setCurrentEntryIdx(0)
   }
@@ -185,7 +198,7 @@ const Home = () => {
                 </TooltipTrigger>
               )}
               <TooltipContent>
-                <p>View task count</p>
+                <p>Current pheromone state</p>
               </TooltipContent>
             </Tooltip>
 

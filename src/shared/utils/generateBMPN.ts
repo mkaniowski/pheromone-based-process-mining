@@ -69,7 +69,6 @@ const generateBPMN = (data: CsvRow[]) => {
     bpmnElements,
     taskMap,
     taskWidth: Object.keys(counts).length > 5 ? Object.keys(counts).length * 20 : 100,
-    counts,
   }
 }
 

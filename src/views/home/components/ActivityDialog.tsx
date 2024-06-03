@@ -42,7 +42,7 @@ export const columns: ColumnDef<CountRow>[] = [
           variant='ghost'
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
         >
-          Count
+          Pheromone strength
           <LuArrowUpDown className='ml-2 h-4 w-4' />
         </Button>
       )
@@ -58,7 +58,7 @@ const ActivityDialog = ({ data }: IActivityDialog) => {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Activity count list</DialogTitle>
+          <DialogTitle>Current pheromone state</DialogTitle>
           <DialogDescription>
             <ActivityTable
               columns={columns}

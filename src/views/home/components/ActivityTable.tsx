@@ -30,6 +30,7 @@ export interface IActivityTable {
 
 const ActivityTable = ({ columns, data }: IActivityTable) => {
   const [sorting, setSorting] = useState<SortingState>([])
+
   const table = useReactTable({
     data,
     columns,
