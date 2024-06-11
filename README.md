@@ -30,7 +30,7 @@ The pheromone algorithm simulates ant behavior by:
 ## Getting Started
 ### Prerequisites
 - Node.js
-- npm or yarn
+- pnpm (or npm/yarn)
 
 ### Installation
 ```bash
